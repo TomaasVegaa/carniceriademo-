@@ -1,0 +1,6 @@
+{
+  "name": "Sistema Carnicería",
+  "description": "Sistema de facturación y punto de venta simple para carnicería.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
