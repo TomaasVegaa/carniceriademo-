@@ -4,12 +4,12 @@ import { getFirestore, enableMultiTabIndexedDbPersistence } from 'firebase/fires
 // Configuración de Firebase (Se debe reemplazar con las credenciales reales del cliente)
 // Puedes obtener estos valores creando un proyecto en la consola de Firebase (https://console.firebase.google.com/)
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyKey-CambiarPorReal",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "carniceria-demo.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "carniceria-demo",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "carniceria-demo.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef"
+  apiKey: "AIzaSyDws9pMbb-NoTQ1vju3W-LcvocRElIUYRE",
+  authDomain: "carniceria-17356.firebaseapp.com",
+  projectId: "carniceria-17356",
+  storageBucket: "carniceria-17356.firebasestorage.app",
+  messagingSenderId: "292084901944",
+  appId: "1:292084901944:web:03d75f506c2b91cd675ecd"
 };
 
 // Inicializar Firebase
