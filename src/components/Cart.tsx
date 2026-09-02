@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, FileText, Banknote, CreditCard, Smartphone, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Smartphone, ShieldCheck, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { CartItem, InvoiceType, DocType } from '../types';
 
 interface CartProps {
@@ -18,8 +18,10 @@ interface CartProps {
 
 export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: CartProps) {
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
-  const [wantsInvoice, setWantsInvoice] = useState(true); // Facturación como foco principal
-  const [invoiceType, setInvoiceType] = useState<InvoiceType>('FACTURA_B');
+  const [wantsInvoice, setWantsInvoice] = useState(true); // Facturación rápida por defecto
+  
+  // Opciones avanzadas ocultas por defecto para máxima velocidad
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [docTipo, setDocTipo] = useState<DocType>('99');
   const [docNro, setDocNro] = useState('');
 
@@ -29,14 +31,14 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
     onCheckout(
       paymentMethod, 
       wantsInvoice, 
-      invoiceType, 
+      'FACTURA_C', // Monotributista SIEMPRE Factura C
       docTipo, 
       docTipo === '99' ? '0' : docNro
     );
   };
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden pb-16 sm:pb-0">
+    <div className="h-full flex flex-col bg-white rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden">
       {/* Header */}
       <div className="p-4 bg-[#FDFBF7] border-b border-[#EFEBE9] flex justify-between items-center shrink-0">
         <div>
@@ -58,7 +60,7 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
       </div>
 
       {/* Item List */}
-      <div className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto">
+      <div className="flex-1 min-h-0 p-3 sm:p-4 space-y-2 overflow-y-auto">
         {items.length === 0 ? (
           <div className="h-48 sm:h-full flex flex-col items-center justify-center text-center text-gray-400 p-6">
             <p className="text-base font-bold text-[#5D4037]">El pedido está vacío</p>
@@ -136,12 +138,15 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
           </div>
         </div>
 
-        {/* Facturación Electrónica ARCA */}
-        <div className="bg-white p-3 rounded-2xl border border-[#D7CCC8] space-y-2.5">
+        {/* Facturación Ultra Rápida ARCA (Factura C) */}
+        <div className="bg-white p-3 rounded-2xl border border-[#D7CCC8] space-y-2.5 transition-all">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <ShieldCheck size={18} className="text-[#4F7942]" />
-              <span className="text-xs font-black text-[#3C2A21] uppercase">Factura ARCA (ex-AFIP)</span>
+              <div>
+                <span className="text-xs font-black text-[#3C2A21] uppercase block leading-none">Factura C (ARCA)</span>
+                {wantsInvoice && !showAdvanced && <span className="text-[10px] text-gray-500 font-bold">Consumidor Final</span>}
+              </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input 
@@ -155,74 +160,67 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
           </div>
 
           {wantsInvoice && (
-            <div className="space-y-2 pt-1 border-t border-[#EFEBE9]">
-              {/* Tipo de Factura */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setInvoiceType('FACTURA_B')}
-                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-colors ${
-                    invoiceType === 'FACTURA_B'
-                      ? 'bg-[#8B4513] text-white'
-                      : 'bg-[#EFEBE9] text-[#5D4037]'
-                  }`}
-                >
-                  Factura B (IVA Incl.)
-                </button>
-                <button
-                  onClick={() => setInvoiceType('FACTURA_C')}
-                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-colors ${
-                    invoiceType === 'FACTURA_C'
-                      ? 'bg-[#8B4513] text-white'
-                      : 'bg-[#EFEBE9] text-[#5D4037]'
-                  }`}
-                >
-                  Factura C
-                </button>
-              </div>
+            <div className="pt-1">
+              <button 
+                onClick={() => {
+                  setShowAdvanced(!showAdvanced);
+                  if (showAdvanced) {
+                    setDocTipo('99');
+                    setDocNro('');
+                  }
+                }}
+                className="flex items-center gap-1 text-[10px] font-bold text-[#8B4513] hover:text-[#5D2E0C]"
+              >
+                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {showAdvanced ? 'Ocultar opciones avanzadas' : 'Facturar a un CUIT/DNI específico'}
+              </button>
 
-              {/* Receptor */}
-              <div className="flex gap-1.5 text-xs font-semibold">
-                <button
-                  onClick={() => { setDocTipo('99'); setDocNro(''); }}
-                  className={`flex-1 py-1 px-1 rounded-lg border text-center truncate ${
-                    docTipo === '99'
-                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
-                      : 'bg-white border-gray-300 text-gray-600'
-                  }`}
-                >
-                  Cons. Final
-                </button>
-                <button
-                  onClick={() => setDocTipo('96')}
-                  className={`flex-1 py-1 px-1 rounded-lg border text-center ${
-                    docTipo === '96'
-                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
-                      : 'bg-white border-gray-300 text-gray-600'
-                  }`}
-                >
-                  DNI
-                </button>
-                <button
-                  onClick={() => setDocTipo('80')}
-                  className={`flex-1 py-1 px-1 rounded-lg border text-center ${
-                    docTipo === '80'
-                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
-                      : 'bg-white border-gray-300 text-gray-600'
-                  }`}
-                >
-                  CUIT
-                </button>
-              </div>
+              {showAdvanced && (
+                <div className="mt-2 space-y-2 border-t border-[#EFEBE9] pt-2 animate-in fade-in">
+                  <div className="flex gap-1.5 text-xs font-semibold">
+                    <button
+                      onClick={() => { setDocTipo('99'); setDocNro(''); }}
+                      className={`flex-1 py-1 px-1 rounded-lg border text-center truncate transition-colors ${
+                        docTipo === '99'
+                          ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
+                          : 'bg-[#FDFBF7] border-gray-200 text-gray-500'
+                      }`}
+                    >
+                      Cons. Final
+                    </button>
+                    <button
+                      onClick={() => setDocTipo('96')}
+                      className={`flex-1 py-1 px-1 rounded-lg border text-center transition-colors ${
+                        docTipo === '96'
+                          ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
+                          : 'bg-[#FDFBF7] border-gray-200 text-gray-500'
+                      }`}
+                    >
+                      DNI
+                    </button>
+                    <button
+                      onClick={() => setDocTipo('80')}
+                      className={`flex-1 py-1 px-1 rounded-lg border text-center transition-colors ${
+                        docTipo === '80'
+                          ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
+                          : 'bg-[#FDFBF7] border-gray-200 text-gray-500'
+                      }`}
+                    >
+                      CUIT
+                    </button>
+                  </div>
 
-              {/* Input para DNI o CUIT */}
-              {docTipo !== '99' && (
-                <input
-                  type="number"
-                  placeholder={docTipo === '80' ? 'Ingrese CUIT (11 dígitos)' : 'Ingrese DNI del cliente'}
-                  value={docNro}
-                  onChange={(e) => setDocNro(e.target.value)}
-                  className="w-full p-2 bg-[#FDFBF7] border border-[#D7CCC8] rounded-xl text-xs font-bold outline-none focus:border-[#8B4513]"
-                />
+                  {/* Input para DNI o CUIT */}
+                  {docTipo !== '99' && (
+                    <input
+                      type="number"
+                      placeholder={docTipo === '80' ? 'Ingrese CUIT (11 dígitos)' : 'Ingrese DNI del cliente'}
+                      value={docNro}
+                      onChange={(e) => setDocNro(e.target.value)}
+                      className="w-full p-2 bg-[#FDFBF7] border border-[#D7CCC8] rounded-xl text-xs font-bold outline-none focus:border-[#8B4513]"
+                    />
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -239,7 +237,7 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
         {/* Action Button */}
         <button
           onClick={handleCobrar}
-          disabled={items.length === 0 || !isShiftOpen}
+          disabled={items.length === 0 || !isShiftOpen || (wantsInvoice && docTipo !== '99' && !docNro)}
           className={`w-full py-4 text-white rounded-2xl font-black text-lg shadow-md uppercase border-b-4 transition-all active:scale-98 ${
             !isShiftOpen
               ? 'bg-gray-400 border-gray-500 cursor-not-allowed opacity-75'

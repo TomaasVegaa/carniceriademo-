@@ -67,7 +67,7 @@ export function ProductGrid({ products, categories, onProductClick }: ProductGri
       )}
 
       {/* Products Grid */}
-      <div className="flex-1 overflow-y-auto pr-0.5 pb-24 sm:pb-8">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 pb-24 sm:pb-8">
         {filteredProducts.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 p-4">
             <Beef size={40} className="text-[#D7CCC8] mb-2" />

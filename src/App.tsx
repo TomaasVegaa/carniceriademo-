@@ -19,6 +19,14 @@ import { InvoiceModal } from './components/InvoiceModal';
 import { Product, CartItem, Category, Sale, ShiftState, AuthUser, InvoiceType, DocType } from './types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from './data';
 import { generateArcaInvoice } from './services/arcaService';
+import { 
+  subscribeToProducts, 
+  subscribeToCategories, 
+  subscribeToShift, 
+  subscribeToSales,
+  saveSaleToDB,
+  initializeDemoData
+} from './services/dbService';
 
 export default function App() {
   // Estado de Autenticación
@@ -27,24 +35,9 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Estado de Catálogo y Categorías
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('pos_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('pos_categories');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
-
-  // Guardar catálogo si cambia
-  useEffect(() => {
-    localStorage.setItem('pos_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('pos_categories', JSON.stringify(categories));
-  }, [categories]);
+  // Estado de Catálogo y Categorías (Sincronizado con Firebase)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Estado del Carrito y Modal de Peso
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -53,27 +46,29 @@ export default function App() {
   // Estado de Navegación Móvil
   const [activeTab, setActiveTab] = useState<'pos' | 'cart' | 'shift' | 'prices'>('pos');
 
-  // Estado de Caja y Ventas
-  const [shift, setShift] = useState<ShiftState>(() => {
-    const saved = localStorage.getItem('pos_shift');
-    return saved ? JSON.parse(saved) : { isOpen: false, shift: null, initialBalance: 0 };
-  });
-  const [sales, setSales] = useState<Sale[]>(() => {
-    const saved = localStorage.getItem('pos_sales');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.map((s: any) => ({ ...s, timestamp: new Date(s.timestamp) }));
-    }
-    return [];
-  });
+  // Estado de Caja y Ventas (Sincronizado con Firebase)
+  const [shift, setShift] = useState<ShiftState>({ isOpen: false, shift: null, initialBalance: 0, openedAt: null });
+  const [sales, setSales] = useState<Sale[]>([]);
 
+  // Configurar Listeners de Firebase
   useEffect(() => {
-    localStorage.setItem('pos_shift', JSON.stringify(shift));
-  }, [shift]);
+    // Inicializar datos si la DB está vacía
+    initializeDemoData(INITIAL_PRODUCTS, INITIAL_CATEGORIES);
 
-  useEffect(() => {
-    localStorage.setItem('pos_sales', JSON.stringify(sales));
-  }, [sales]);
+    // Suscripciones en tiempo real
+    const unsubProducts = subscribeToProducts(setProducts);
+    const unsubCategories = subscribeToCategories(setCategories);
+    const unsubShift = subscribeToShift(setShift);
+    const unsubSales = subscribeToSales(setSales);
+
+    // Limpieza al desmontar
+    return () => {
+      unsubProducts();
+      unsubCategories();
+      unsubShift();
+      unsubSales();
+    };
+  }, []);
 
   // Modal de Comprobante Fiscal ARCA
   const [activeInvoiceSale, setActiveInvoiceSale] = useState<Sale | null>(null);
@@ -146,7 +141,8 @@ export default function App() {
       cashierName: currentUser?.name
     };
 
-    setSales((prev) => [newSale, ...prev]);
+    // Guardar en Firebase (la vista se actualiza sola gracias al onSnapshot)
+    saveSaleToDB(newSale);
     setCart([]);
 
     // Si generó factura ARCA, abrir inmediatamente el visor del comprobante con QR y WhatsApp
@@ -224,7 +220,6 @@ export default function App() {
         {activeTab === 'shift' && (
           <CashRegisterView
             shift={shift}
-            setShift={setShift}
             sales={sales}
             onSelectSaleForInvoice={(sale) => setActiveInvoiceSale(sale)}
           />
@@ -234,8 +229,6 @@ export default function App() {
           <PricesView
             categories={categories}
             products={products}
-            setCategories={setCategories}
-            setProducts={setProducts}
           />
         )}
 

@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { X, Info, Tag, Plus, Edit2, Trash2, Save, Store, Calculator, Clock, ReceiptText, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Product, Sale, ShiftState } from '../types';
+import { saveProductToDB, deleteProductFromDB, saveCategoriesToDB, saveShiftToDB } from '../services/dbService';
 
 interface PricesViewProps {
   categories: string[];
   products: Product[];
-  setCategories: (cats: string[]) => void;
-  setProducts: (prods: Product[]) => void;
   onBack?: () => void;
 }
 
-export function PricesView({ categories, products, setCategories, setProducts, onBack }: PricesViewProps) {
+export function PricesView({ categories, products, onBack }: PricesViewProps) {
   const [activeCategory, setActiveCategory] = useState(categories[0] || '');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -21,15 +20,19 @@ export function PricesView({ categories, products, setCategories, setProducts, o
   const handleAddCategory = () => {
     if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
       const trimmed = newCategoryName.trim();
-      setCategories([...categories, trimmed]);
+      saveCategoriesToDB([...categories, trimmed]);
       setActiveCategory(trimmed);
       setNewCategoryName('');
     }
   };
 
   const handleDeleteCategory = (cat: string) => {
-    setCategories(categories.filter(c => c !== cat));
-    setProducts(products.filter(p => p.category !== cat));
+    saveCategoriesToDB(categories.filter(c => c !== cat));
+    
+    // Eliminar también los productos de esa categoría
+    const productsToDelete = products.filter(p => p.category === cat);
+    productsToDelete.forEach(p => deleteProductFromDB(p.id));
+
     if (activeCategory === cat) setActiveCategory(categories[0] || '');
   };
 
@@ -42,24 +45,27 @@ export function PricesView({ categories, products, setCategories, setProducts, o
       category: activeCategory, 
       unit: 'kg'
     };
-    setProducts([...products, newProd]);
+    saveProductToDB(newProd); // Guarda directamente en DB, el listener actualiza el estado
     setEditingProductId(newId);
     setEditForm(newProd);
   };
 
   const handleSaveProduct = () => {
     if (editingProductId) {
-      setProducts(products.map(p => p.id === editingProductId ? { ...p, ...editForm } as Product : p));
+      const currentProduct = products.find(p => p.id === editingProductId);
+      if (currentProduct) {
+        saveProductToDB({ ...currentProduct, ...editForm } as Product);
+      }
       setEditingProductId(null);
     }
   };
 
   const handleDeleteProduct = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
+    deleteProductFromDB(id);
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#FDFBF7] rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden pb-16 sm:pb-0">
+    <div className="h-full flex flex-col bg-[#FDFBF7] rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden">
       {/* Header */}
       <div className="bg-[#8B4513] text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
@@ -130,7 +136,7 @@ export function PricesView({ categories, products, setCategories, setProducts, o
       </div>
 
       {/* Product List for Mobile */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-white">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2.5 bg-white">
         {filteredProducts.map((product) => {
           const isEditing = editingProductId === product.id;
 
@@ -233,13 +239,12 @@ export function PricesView({ categories, products, setCategories, setProducts, o
 
 interface CashRegisterViewProps {
   shift: ShiftState;
-  setShift: (s: ShiftState) => void;
   sales: Sale[];
   onSelectSaleForInvoice?: (sale: Sale) => void;
   onBack?: () => void;
 }
 
-export function CashRegisterView({ shift, setShift, sales, onSelectSaleForInvoice, onBack }: CashRegisterViewProps) {
+export function CashRegisterView({ shift, sales, onSelectSaleForInvoice, onBack }: CashRegisterViewProps) {
   const [initialBalanceInput, setInitialBalanceInput] = useState('');
   const [showConfirmClose, setShowConfirmClose] = useState(false);
 
@@ -260,7 +265,7 @@ export function CashRegisterView({ shift, setShift, sales, onSelectSaleForInvoic
 
   const handleOpenShift = (turno: 'Mañana' | 'Tarde') => {
     const balance = parseFloat(initialBalanceInput) || 0;
-    setShift({ 
+    saveShiftToDB({ 
       isOpen: true, 
       shift: turno, 
       initialBalance: balance,
@@ -269,12 +274,12 @@ export function CashRegisterView({ shift, setShift, sales, onSelectSaleForInvoic
   };
 
   const confirmCloseShift = () => {
-    setShift({ isOpen: false, shift: null, initialBalance: 0, openedAt: null });
+    saveShiftToDB({ isOpen: false, shift: null, initialBalance: 0, openedAt: null });
     setShowConfirmClose(false);
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#FDFBF7] rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden pb-16 sm:pb-0">
+    <div className="h-full flex flex-col bg-[#FDFBF7] rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden">
       {/* Header */}
       <div className="bg-[#8B4513] text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
@@ -288,7 +293,7 @@ export function CashRegisterView({ shift, setShift, sales, onSelectSaleForInvoic
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3.5">
         {!shift.isOpen ? (
           /* Caja Cerrada - Pantalla de Apertura */
           <div className="bg-white p-5 rounded-2xl border-2 border-[#D7CCC8] flex flex-col items-center text-center shadow-xs">
