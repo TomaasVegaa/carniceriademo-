@@ -1,52 +1,95 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
-import { Beef, CheckCircle2, Receipt } from 'lucide-react';
+import { 
+  Beef, 
+  ShoppingCart, 
+  Store, 
+  Tag, 
+  LogOut, 
+  ReceiptText, 
+  CheckCircle2, 
+  ChevronRight,
+  ShieldCheck
+} from 'lucide-react';
 import { ProductGrid } from './components/ProductGrid';
 import { Cart } from './components/Cart';
 import { KeypadModal } from './components/KeypadModal';
-import { HelpModal, PricesModal, ScaleModal, CashRegisterModal } from './components/FooterModals';
-import { Product, CartItem, Category, Sale, ShiftState } from './types';
+import { CashRegisterView, PricesView } from './components/FooterModals';
+import { LoginScreen } from './components/LoginScreen';
+import { InvoiceModal } from './components/InvoiceModal';
+import { Product, CartItem, Category, Sale, ShiftState, AuthUser, InvoiceType, DocType } from './types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from './data';
+import { generateArcaInvoice } from './services/arcaService';
 
 export default function App() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [checkoutInfo, setCheckoutInfo] = useState<{payment: string, invoice: boolean} | null>(null);
-  const [activeModal, setActiveModal] = useState<'help' | 'prices' | 'scale' | 'register' | null>(null);
+  // Estado de Autenticación
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('pos_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [shift, setShift] = useState<ShiftState>({ isOpen: false, shift: null, initialBalance: 0 });
+  // Estado de Catálogo y Categorías
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('pos_products');
+    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+  });
+  const [categories, setCategories] = useState<Category[]>(() => {
+    const saved = localStorage.getItem('pos_categories');
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+
+  // Guardar catálogo si cambia
+  useEffect(() => {
+    localStorage.setItem('pos_products', JSON.stringify(products));
+  }, [products]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') {
-        e.preventDefault();
-        setActiveModal('help');
-      }
-      if (e.key === 'F2') {
-        e.preventDefault();
-        setActiveModal('prices');
-      }
-      if (e.key === 'F3') {
-        e.preventDefault();
-        setActiveModal('scale');
-      }
-      if (e.key === 'F4') {
-        e.preventDefault();
-        setActiveModal('register');
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    localStorage.setItem('pos_categories', JSON.stringify(categories));
+  }, [categories]);
 
+  // Estado del Carrito y Modal de Peso
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Estado de Navegación Móvil
+  const [activeTab, setActiveTab] = useState<'pos' | 'cart' | 'shift' | 'prices'>('pos');
+
+  // Estado de Caja y Ventas
+  const [shift, setShift] = useState<ShiftState>(() => {
+    const saved = localStorage.getItem('pos_shift');
+    return saved ? JSON.parse(saved) : { isOpen: false, shift: null, initialBalance: 0 };
+  });
+  const [sales, setSales] = useState<Sale[]>(() => {
+    const saved = localStorage.getItem('pos_sales');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.map((s: any) => ({ ...s, timestamp: new Date(s.timestamp) }));
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('pos_shift', JSON.stringify(shift));
+  }, [shift]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_sales', JSON.stringify(sales));
+  }, [sales]);
+
+  // Modal de Comprobante Fiscal ARCA
+  const [activeInvoiceSale, setActiveInvoiceSale] = useState<Sale | null>(null);
+
+  // Manejador de Login y Logout
+  const handleLogin = (user: AuthUser) => {
+    setCurrentUser(user);
+    localStorage.setItem('pos_auth_user', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('pos_auth_user');
+  };
+
+  // Manejo de Carrito
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
   };
@@ -56,7 +99,7 @@ export default function App() {
       const newItem: CartItem = {
         id: Math.random().toString(36).substring(2, 9),
         product: selectedProduct,
-        quantity,
+        quantity
       };
       setCart((prev) => [...prev, newItem]);
       setSelectedProduct(null);
@@ -64,142 +107,234 @@ export default function App() {
   };
 
   const handleRemoveItem = (id: string) => {
-    setCart((prev) => prev.filter(item => item.id !== id));
+    setCart((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleClear = () => {
+  const handleClearCart = () => {
     setCart([]);
   };
 
-  const handleCheckout = (payment: string, invoice: boolean) => {
+  // Cobro y Facturación ARCA
+  const handleCheckout = (
+    paymentMethod: string, 
+    invoice: boolean,
+    invoiceType: InvoiceType = 'FACTURA_B',
+    docTipo: DocType = '99',
+    docNro: string = '0'
+  ) => {
     if (!shift.isOpen) {
-      setActiveModal('register');
+      setActiveTab('shift');
       return;
     }
 
     const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
+    let fiscalData = undefined;
+    if (invoice) {
+      fiscalData = generateArcaInvoice(cart, total, invoiceType, docTipo, docNro);
+    }
+
     const newSale: Sale = {
       id: Math.random().toString(36).substring(2, 9),
-      items: cart,
+      items: [...cart],
       total,
-      paymentMethod: payment,
+      paymentMethod,
       invoice,
+      fiscalData,
       timestamp: new Date(),
-      shift: shift.shift!
+      shift: shift.shift!,
+      cashierName: currentUser?.name
     };
-    
-    setSales(prev => [newSale, ...prev]);
-    setCheckoutInfo({ payment, invoice });
-    setShowSuccess(true);
+
+    setSales((prev) => [newSale, ...prev]);
     setCart([]);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setCheckoutInfo(null);
-    }, 3500);
+
+    // Si generó factura ARCA, abrir inmediatamente el visor del comprobante con QR y WhatsApp
+    if (invoice && fiscalData) {
+      setActiveInvoiceSale(newSale);
+    }
   };
 
+  // Si no está autenticado, mostrar pantalla de acceso
+  if (!currentUser) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
+  const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#FDFBF7] font-sans text-[#3C2A21]">
-      {/* Header */}
-      <header className="h-16 bg-[#8B4513] text-white flex items-center justify-between px-8 shadow-md z-20">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-            <span className="text-[#8B4513] font-bold text-xl">C</span>
+    <div className="h-dvh w-full bg-[#FDFBF7] font-sans text-[#3C2A21] flex flex-col overflow-hidden">
+      {/* Top Header Mobile */}
+      <header className="h-14 bg-[#8B4513] text-white flex items-center justify-between px-4 shadow-md z-30 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-xs">
+            <Beef size={20} className="text-[#8B4513]" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Sistema Carnicería - Terminal de Venta</h1>
+          <div>
+            <h1 className="text-sm font-black tracking-tight leading-none">POS CARNICERÍA</h1>
+            <span className="text-[10px] text-amber-200 font-semibold">{currentUser.name}</span>
+          </div>
         </div>
-        <div className="text-right hidden sm:block">
-          <p className="text-sm opacity-90">Vendedor: Principal</p>
+
+        <div className="flex items-center gap-2">
+          {/* Badge de Estado de Caja */}
+          <button
+            onClick={() => setActiveTab('shift')}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+              shift.isOpen
+                ? 'bg-[#4F7942] border-emerald-400 text-white shadow-2xs'
+                : 'bg-[#A52A2A] border-red-400 text-white animate-pulse'
+            }`}
+          >
+            {shift.isOpen ? `Caja: ${shift.shift}` : 'Caja Cerrada'}
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-amber-100"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex gap-4 p-4 overflow-hidden">
-        {/* Left Side: Products */}
-        <section className="flex-[1.5] min-w-0 flex flex-col">
-          <ProductGrid products={products} categories={categories} onProductClick={handleProductClick} />
-        </section>
-
-        {/* Right Side: Cart */}
-        <aside className="w-[350px] lg:w-[450px] shrink-0 flex flex-col z-10">
-          <Cart 
-            items={cart} 
-            isShiftOpen={shift.isOpen}
-            onRemoveItem={handleRemoveItem} 
-            onCheckout={handleCheckout}
-            onClear={handleClear}
+      {/* Main Screen Content */}
+      <main className="flex-1 overflow-hidden p-2 sm:p-4 max-w-5xl mx-auto w-full relative">
+        {activeTab === 'pos' && (
+          <ProductGrid
+            products={products}
+            categories={categories}
+            onProductClick={handleProductClick}
           />
-        </aside>
+        )}
+
+        {activeTab === 'cart' && (
+          <Cart
+            items={cart}
+            isShiftOpen={shift.isOpen}
+            onRemoveItem={handleRemoveItem}
+            onCheckout={handleCheckout}
+            onClear={handleClearCart}
+          />
+        )}
+
+        {activeTab === 'shift' && (
+          <CashRegisterView
+            shift={shift}
+            setShift={setShift}
+            sales={sales}
+            onSelectSaleForInvoice={(sale) => setActiveInvoiceSale(sale)}
+          />
+        )}
+
+        {activeTab === 'prices' && (
+          <PricesView
+            categories={categories}
+            products={products}
+            setCategories={setCategories}
+            setProducts={setProducts}
+          />
+        )}
+
+        {/* Floating Quick Checkout Bar (Visible en Venta si hay ítems en carrito) */}
+        {activeTab === 'pos' && cart.length > 0 && (
+          <div className="absolute bottom-16 inset-x-2 sm:inset-x-4 z-20">
+            <button
+              onClick={() => setActiveTab('cart')}
+              className="w-full bg-[#4F7942] hover:brightness-110 text-white px-4 py-3 rounded-2xl shadow-xl border-2 border-[#2D4226] flex items-center justify-between active:scale-98 transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-black text-sm">
+                  {cart.length}
+                </div>
+                <div className="text-left leading-tight">
+                  <span className="text-xs uppercase tracking-wider block text-emerald-100 font-bold">Ver Pedido</span>
+                  <span className="text-lg font-black">${cartTotal.toLocaleString('es-AR')}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 font-bold text-sm bg-white/20 px-3 py-1.5 rounded-xl">
+                <span>Cobrar</span>
+                <ChevronRight size={18} />
+              </div>
+            </button>
+          </div>
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="h-12 bg-[#D7CCC8] flex items-center justify-between px-8 text-sm font-medium z-10 shrink-0">
-        <div className="flex gap-6">
-          <span>📦 Stock: OK</span>
-          <span className="font-bold text-[#8B4513]">
-            💰 Caja: {shift.isOpen ? (
-              <span className="text-[#4F7942] uppercase ml-1">Abierta ({shift.shift})</span>
-            ) : (
-              <span className="text-[#A52A2A] uppercase ml-1">Cerrada</span>
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="h-16 bg-white border-t-2 border-[#D7CCC8] grid grid-cols-4 px-2 z-30 shrink-0 shadow-lg select-none">
+        <button
+          onClick={() => setActiveTab('pos')}
+          className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+            activeTab === 'pos' ? 'text-[#8B4513] font-black' : 'text-gray-400 font-medium'
+          }`}
+        >
+          <Beef size={22} className={activeTab === 'pos' ? 'scale-110 transition-transform' : ''} />
+          <span className="text-[10px] tracking-tight">Venta</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('cart')}
+          className={`flex flex-col items-center justify-center gap-1 relative transition-colors ${
+            activeTab === 'cart' ? 'text-[#8B4513] font-black' : 'text-gray-400 font-medium'
+          }`}
+        >
+          <div className="relative">
+            <ShoppingCart size={22} className={activeTab === 'cart' ? 'scale-110 transition-transform' : ''} />
+            {cart.length > 0 && (
+              <span className="absolute -top-1.5 -right-2.5 bg-[#A52A2A] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                {cart.length}
+              </span>
             )}
-          </span>
-        </div>
-        <div className="flex gap-4">
-          <button onClick={() => setActiveModal('help')} className="bg-white px-3 py-1 rounded shadow-sm hover:bg-[#EFEBE9] transition-colors cursor-pointer border border-[#D7CCC8]">F1: Ayuda</button>
-          <button onClick={() => setActiveModal('prices')} className="bg-white px-3 py-1 rounded shadow-sm hover:bg-[#EFEBE9] transition-colors cursor-pointer border border-[#D7CCC8]">F2: Precios</button>
-          <button onClick={() => setActiveModal('scale')} className="bg-white px-3 py-1 rounded shadow-sm hover:bg-[#EFEBE9] transition-colors cursor-pointer border border-[#D7CCC8]">F3: Balanza</button>
-          <button onClick={() => setActiveModal('register')} className="bg-[#4F7942] text-white px-3 py-1 rounded shadow-sm hover:brightness-110 transition-colors cursor-pointer border-b-2 border-[#2D4226]">F4: Caja / Ventas</button>
-        </div>
-      </footer>
+          </div>
+          <span className="text-[10px] tracking-tight">Carrito</span>
+        </button>
 
-      {/* Modals */}
-      {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
-      {activeModal === 'prices' && (
-        <PricesModal 
-          onClose={() => setActiveModal(null)}
-          categories={categories}
-          products={products}
-          setCategories={setCategories}
-          setProducts={setProducts}
-        />
-      )}
-      {activeModal === 'scale' && <ScaleModal onClose={() => setActiveModal(null)} />}
-      {activeModal === 'register' && (
-        <CashRegisterModal 
-          onClose={() => setActiveModal(null)} 
-          shift={shift} 
-          setShift={setShift} 
-          sales={sales} 
-        />
-      )}
+        <button
+          onClick={() => setActiveTab('shift')}
+          className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+            activeTab === 'shift' ? 'text-[#8B4513] font-black' : 'text-gray-400 font-medium'
+          }`}
+        >
+          <div className="relative">
+            <Store size={22} className={activeTab === 'shift' ? 'scale-110 transition-transform' : ''} />
+            {shift.isOpen && (
+              <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 bg-[#4F7942] rounded-full border border-white"></span>
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight">Caja</span>
+        </button>
 
+        <button
+          onClick={() => setActiveTab('prices')}
+          className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+            activeTab === 'prices' ? 'text-[#8B4513] font-black' : 'text-gray-400 font-medium'
+          }`}
+        >
+          <Tag size={22} className={activeTab === 'prices' ? 'scale-110 transition-transform' : ''} />
+          <span className="text-[10px] tracking-tight">Precios</span>
+        </button>
+      </nav>
+
+      {/* Keypad Modal para ingreso de kilos o unidades */}
       {selectedProduct && (
         <KeypadModal
-          title={`Ingrese Peso: ${selectedProduct.name}`}
+          title={`${selectedProduct.name}`}
           unit={selectedProduct.unit}
           onConfirm={handleConfirmWeight}
           onCancel={() => setSelectedProduct(null)}
         />
       )}
 
-      {showSuccess && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-          <div className="bg-[#FDFBF7] rounded-3xl p-10 flex flex-col items-center shadow-2xl border-4 border-[#4F7942] animate-in zoom-in duration-200 max-w-md text-center">
-            <CheckCircle2 size={80} className="text-[#4F7942] mb-4" />
-            <h2 className="text-4xl font-bold text-[#3C2A21] mb-2">Venta Registrada</h2>
-            <p className="text-xl text-[#5D4037] mb-6 font-medium">Cobro exitoso mediante {checkoutInfo?.payment}</p>
-            
-            {checkoutInfo?.invoice && (
-              <div className="flex items-center justify-center gap-2 bg-[#EFEBE9] text-[#8B4513] px-6 py-3 rounded-xl font-bold border-2 border-[#D7CCC8] mb-6 w-full shadow-sm">
-                <Receipt size={24} />
-                Factura Generada
-              </div>
-            )}
-            
-            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Preparando nueva venta...</p>
-          </div>
-        </div>
+      {/* Invoice Modal para Comprobante Fiscal ARCA con QR y WhatsApp */}
+      {activeInvoiceSale && (
+        <InvoiceModal
+          sale={activeInvoiceSale}
+          onClose={() => setActiveInvoiceSale(null)}
+        />
       )}
     </div>
   );

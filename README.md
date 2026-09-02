@@ -1,46 +1,57 @@
-# 🥩 Sistema de Punto de Venta (POS) para Carnicería
+# 🥩 Sistema de Punto de Venta (POS) para Carnicería - Mobile First
 
-Sistema moderno, táctil y de alta velocidad diseñado específicamente para carnicerías y comercios de barrio. Desarrollado con **React, Vite, TypeScript y Tailwind CSS**.
+Sistema moderno, táctil y de alta velocidad diseñado específicamente para carnicerías, fiambrerías y comercios de barrio, optimizado **100% para su uso en celulares y tablets**. Desarrollado con **React, Vite, TypeScript y Tailwind CSS**.
 
 ---
 
 ## 📌 Resumen del Proyecto
 
-Este proyecto es una **Terminal de Venta (POS)** optimizada para pantallas táctiles y teclado físico, con una interfaz rústica y cálida de alto contraste diseñada para la dinámica rápida del despacho de mostrador.
+El sistema es una **Terminal de Venta (POS) Mobile-First** pensada para operar desde smartphones en el mostrador de atención. Cuenta con:
+- **Seguridad y Acceso con PIN** para despliegue web en Google / Vercel.
+- **Facturación Electrónica ARCA (ex-AFIP)** con CAE, código QR oficial y envío de tickets por WhatsApp.
+- **Control de Caja y Turnos** con arqueo en vivo de efectivo, tarjeta y transferencia.
+- **Gestión Rápida de Precios** y cortes desde el celular.
 
 ---
 
 ## 🚀 Funcionalidades Implementadas
 
-### 1. 🛒 Terminal de Venta Táctil
-- **Grilla de Productos por Categorías:** Navegación por pestañas (Vacuna, Cerdo, Pollo, Elaborados, Achuras, etc.) con botones táctiles grandes y precios visibles.
-- **Teclado Numérico Táctil (Modal):** Ingreso rápido de peso en kilogramos (`kg`) con decimales o unidades (`un`) para productos por pieza.
-- **Carrito de Compras en Tiempo Real:** 
-  - Cálculo automático de subtotales y total general en moneda local (`$ / ARS`).
-  - Eliminación individual de productos y botón de vaciar carrito.
-  - Selección de **Método de Pago** (Efectivo, Tarjeta, Transferencia).
-  - Opción de **Factura Consumidor Final**.
-  - Bloqueo de seguridad: El botón "COBRAR" se deshabilita si la caja está cerrada (`CAJA CERRADA`).
+### 1. 🔐 Acceso Seguro y Login Táctil
+- Acceso protegido mediante PIN de 4 dígitos para proteger la aplicación subida a la nube.
+- Perfiles de usuario integrados:
+  - **Cajero Mostrador:** PIN `1234`
+  - **Administrador:** PIN `9999`
+- Botón de cierre de sesión seguro en el encabezado.
 
-### 2. 🏪 Control de Caja y Turnos (F4)
-- **Apertura de Caja:** Selección de turno (**Mañana** / **Tarde**) con ingreso de **Fondo Inicial de Caja**.
+### 2. 🥩 Terminal de Venta Mobile-First
+- **Buscador de Cortes en Tiempo Real:** Búsqueda instantánea de productos.
+- **Pestañas Deslizables de Categorías:** Vaca, Cerdo, Achuras, Pollo, Elaborados.
+- **Grilla Móvil Táctil:** Botones de gran tamaño con precios por kilo (`kg`) o unidad (`un`).
+- **Teclado Táctil de Pesaje:** Modal inferior con botones numéricos y accesos rápidos de pesada (+0.5 kg, +1 kg, +1.5 kg, etc.).
+- **Barra Flotante de Cobro:** Muestra en tiempo real la cantidad de ítems y el subtotal para ir a cobrar en 1 toque.
+
+### 3. 🧾 Facturación Electrónica ARCA (ex-AFIP)
+- **Tipos de Comprobante:** Factura B (IVA Incluido) y Factura C.
+- **Receptores:** Consumidor Final automático, DNI o CUIT.
+- **Comprobante Fiscal Autorizado:**
+  - Código **CAE** y Fecha de Vencimiento de CAE.
+  - **Código QR oficial de ARCA** generado bajo la normativa RG 4291/5048.
+  - Punto de venta y número correlativo de comprobante.
+- **Envío Inmediato por WhatsApp:** Botón para abrir WhatsApp con el ticket formateado y el link de verificación de ARCA listo para enviar al cliente.
+- **Impresión Térmica:** Formato compatible con impresoras de 58mm y 80mm o descarga directa en PDF.
+
+### 4. 🏪 Control de Caja y Arqueo de Turno
+- **Apertura de Turno:** Selección de turno (**Mañana** / **Tarde**) con ingreso de **Fondo Inicial en Efectivo**.
 - **Arqueo y Desglose en Vivo:**
-  - Total de dinero físico en caja (Fondo inicial + Total en Efectivo).
+  - Dinero Físico en Caja (Fondo Inicial + Cobros en Efectivo).
   - Total recaudado por Tarjeta.
   - Total recaudado por Transferencia.
-- **Historial de Ventas del Turno:** Tabla detallada con hora exacta, detalle de productos/pesos, método de pago y monto cobrado.
-- **Cierre de Turno:** Confirmación visual integrada directamente en la interfaz.
+- **Historial de Ventas del Turno:** Registro detallado de ventas con botón para ver y reimprimir la factura ARCA de cualquier venta previa.
+- **Cierre de Turno:** Confirmación de seguridad en pantalla para cerrar turno y reiniciar la caja.
 
-### 3. 🏷️ Gestión de Catálogo y Precios CRUD (F2)
-- Creación y eliminación de categorías en vivo.
-- Alta, edición de precios/nombres/unidades y baja de productos.
-- Los cambios se reflejan inmediatamente en la grilla de ventas.
-
-### 4. ⚡ Atajos de Teclado y Ayuda (Footer)
-- `F1`: Ayuda y guía rápida de teclas de acceso rápido.
-- `F2`: Panel de Precios y Catálogo.
-- `F3`: Balanza y guía de conectividad.
-- `F4`: Panel de Caja y Registro de Ventas.
+### 5. 🏷️ Gestión de Catálogo y Precios
+- Actualización de precios del kilo/unidad al instante desde el celular.
+- Creación y eliminación de categorías y productos.
 
 ---
 
@@ -48,60 +59,38 @@ Este proyecto es una **Terminal de Venta (POS)** optimizada para pantallas táct
 
 - **Frontend:** React 19 + TypeScript
 - **Bundler:** Vite 6
-- **Estilos:** Tailwind CSS v4 (Paleta: tonos cálidos y naturales `#8B4513`, `#4F7942`, `#A52A2A`, `#FDFBF7`)
+- **Estilos:** Tailwind CSS v4 (Paleta rústica: `#8B4513`, `#4F7942`, `#A52A2A`, `#FDFBF7`)
 - **Iconos:** Lucide React
-- **Animaciones:** Motion (`motion/react`)
-- **Despliegue:** Optimizado para Vercel (`vercel.json` configurado para SPA) y GitHub
+- **QR Fiscal:** `qrcode.react` (Normativa ARCA RG 4291)
+- **Despliegue:** Optimizado para Vercel (`vercel.json`) y Google Cloud / Hosting
 
 ---
 
 ## 📂 Estructura del Código
 
 ```
-├── index.html                  # Entry point HTML
-├── metadata.json               # Configuración del proyecto
-├── vercel.json                 # Configuración de despliegue SPA en Vercel
-├── package.json                # Dependencias y scripts
 ├── src/
 │   ├── main.tsx                # Bootstrap de React
-│   ├── App.tsx                 # Estado global (caja, carrito, ventas, catálogo)
-│   ├── types.ts                # Modelos TypeScript (Product, CartItem, Sale, ShiftState)
-│   ├── data.ts                 # Catálogo inicial de productos y categorías
-│   ├── index.css               # Estilos globales Tailwind
+│   ├── App.tsx                 # Control de navegación móvil, sesión, caja y catálogo
+│   ├── types.ts                # Modelos (Product, Sale, FiscalData, ShiftState, AuthUser)
+│   ├── data.ts                 # Catálogo inicial de carnes
+│   ├── index.css               # Estilos Tailwind CSS
+│   ├── services/
+│   │   └── arcaService.ts      # Facturación ARCA, CAE, QR oficial y WhatsApp
 │   └── components/
-│       ├── Cart.tsx            # Panel lateral derecho (carrito, cobro, métodos de pago)
-│       ├── ProductGrid.tsx     # Grilla de categorías y productos
-│       ├── KeypadModal.tsx     # Modal de teclado numérico táctil para kg/unidades
-│       └── FooterModals.tsx    # Modales de F1 (Ayuda), F2 (Precios CRUD), F3 (Balanza), F4 (Caja)
+│       ├── LoginScreen.tsx     # Pantalla de Login táctil con PIN
+│       ├── ProductGrid.tsx     # Buscador y grilla móvil de productos
+│       ├── KeypadModal.tsx     # Teclado táctil para ingreso de kilos/unidades
+│       ├── Cart.tsx            # Carrito móvil con switch de Factura ARCA y métodos de pago
+│       ├── InvoiceModal.tsx    # Modal de Comprobante Fiscal ARCA con QR y WhatsApp
+│       └── FooterModals.tsx    # Vistas de Caja/Arqueo (F4) y Catálogo/Precios (F2)
 ```
 
 ---
 
-## 🔮 Roadmap / Próximas Fases para Continuar
+## 🚢 Despliegue en Vercel o Hosting Web
 
-Para continuar el desarrollo con **Google Antigravity** o nuevos desarrolladores, las siguientes etapas recomendadas son:
-
-1. **☁️ Persistencia en la Nube (Base de Datos):**
-   - Integrar Firebase Firestore o PostgreSQL / Supabase para sincronización multi-caja y persistencia de ventas y precios.
-2. **📒 Cuentas Corrientes ("Fiado"):**
-   - Módulo de clientes frecuentes, asignación de ventas a cuenta corriente y registro de pagos parciales/totales.
-3. **⚡ Venta Libre / Monto Rápido:**
-   - Botón directo para ingresar importes arbitrarios (ej. leña, carbón, combos) sin requerir producto en catálogo.
-4. **🥩 Control de Stock y Desposte de Media Res:**
-   - Registro de ingreso de media res por kilo y cálculo de mermas y rendimientos de cortes.
-5. **👥 Roles y Permisos de Usuario:**
-   - Perfil Cajero (solo cobro) vs. Perfil Administrador/Dueño (modificación de precios y cierres).
-6. **🖨️ Hardware & Periféricos:**
-   - Conexión con Balanzas (Web Serial API para protocolos Systel/Kretz).
-   - Impresión de tickets en comandera térmica (58mm/80mm ESC/POS).
-   - Soporte para lector de código de barras USB/Bluetooth.
-
----
-
-## 🚢 Despliegue en Vercel desde GitHub
-
-1. Conectar el repositorio de GitHub en [Vercel](https://vercel.com).
+1. Conectar el repositorio de GitHub en [Vercel](https://vercel.com) o su proveedor de hosting.
 2. Framework Preset: **Vite**.
 3. Build Command: `npm run build`
 4. Output Directory: `dist`
-5. El archivo `vercel.json` incluido en el proyecto garantiza que todas las rutas se resuelvan correctamente.

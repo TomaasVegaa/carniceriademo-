@@ -1,58 +1,59 @@
 # Contexto y Directivas para el Agente (Google Antigravity)
 
-Este archivo contiene el contexto del proyecto, directivas de diseño y especificaciones técnicas para continuar el desarrollo del **Sistema de Punto de Venta (POS) para Carnicería**.
+Este archivo contiene el contexto del proyecto, directivas de diseño y especificaciones técnicas para el **Sistema de Punto de Venta (POS) para Carnicería**.
 
 ---
 
-## 🎯 Objetivo del Proyecto
-Desarrollar un sistema POS especializado para carnicerías, fiambrerías y comercios de barrio.
-Prioridades de diseño:
-- **Táctil y de alta velocidad:** Botones de gran tamaño, sin distracciones, con flujo de pocos clics.
-- **Teclas de función F1-F4:** Operación híbrida con teclado físico de caja registradora.
-- **Estética "Natural / Rústica":** Tonos madera (#8B4513), verde (#4F7942), vino (#A52A2A) y fondo cálido (#FDFBF7 / #EFEBE9).
+## 🎯 Objetivo y Enfoque del Proyecto
+Sistema POS optimizado **100% Mobile-First** para funcionar exclusivamente desde celulares (smartphones y tablets) en carnicerías, fiambrerías y comercios de barrio.
+
+### Prioridades Clave Definidas con el Cliente:
+- **Mobile-First Real:** Navegación por barra inferior (Venta, Carrito, Caja, Precios) y botones táctiles ergonómicos.
+- **Seguridad en la Nube:** Pantalla de Login con PIN de 4 dígitos para proteger la aplicación web.
+- **Facturación Electrónica ARCA (ex-AFIP) - Foco Principal:**
+  - Factura B / C con CAE, fecha de vencimiento y Código QR oficial (RG 4291/5048).
+  - Envío directo de tickets fiscales por WhatsApp y vista de impresión térmica.
+  - Servicio `arcaService.ts` preparado para conectar con Web Services de ARCA (WSAA/WSFE).
+- **Simplicidad de Mostrador:** Sin sobrecarga innecesaria de módulos descartados (sin cuenta corriente ni control de stock de media res).
+- **Estética Rústica / Natural:** Tonos madera (`#8B4513`), verde (`#4F7942`), vino (`#A52A2A`) y fondo cálido (`#FDFBF7` / `#EFEBE9`).
 
 ---
 
 ## 🏗️ Estado Actual del Código
 
 1. **`src/types.ts`**:
-   - `Product`: `{ id, name, price, category, unit: 'kg' | 'un' }`
-   - `CartItem`: `{ product, quantity }`
-   - `Category`: `string`
-   - `Sale`: `{ id, items, total, paymentMethod, invoice, timestamp, shift }`
-   - `ShiftState`: `{ isOpen, shift: 'Mañana' | 'Tarde' | null, initialBalance: number }`
+   - `Product`: `{ id, name, price, category, unit: 'kg' | 'unidad', color }`
+   - `CartItem`: `{ id, product, quantity }`
+   - `FiscalData`: `{ invoiceType, ptoVta, cbteNro, docTipo, docNro, cae, caeVto, qrDataUrl, ... }`
+   - `Sale`: `{ id, items, total, paymentMethod, invoice, fiscalData, timestamp, shift, cashierName }`
+   - `ShiftState`: `{ isOpen, shift: 'Mañana' | 'Tarde' | null, initialBalance, openedAt }`
+   - `AuthUser`: `{ id, name, role: 'cajero' | 'administrador', pin }`
 
-2. **`src/App.tsx`**:
-   - Administra el estado global de catálogo (`products`, `categories`), carrito (`cart`), caja (`shift`), ventas (`sales`) y modales (`activeModal`).
-   - Bloquea el botón "COBRAR" si `shift.isOpen === false`.
+2. **`src/services/arcaService.ts`**:
+   - `generateArcaInvoice()`: Genera el comprobante fiscal, calcula totales, genera CAE y construye el payload oficial de QR de ARCA (base64 RG 4291).
+   - `formatWhatsAppTicket()`: Genera el texto formateado del ticket para enviar por WhatsApp.
 
-3. **`src/components/ProductGrid.tsx`**:
-   - Selector lateral de categorías y grilla responsiva de cortes de carne y productos.
+3. **`src/components/LoginScreen.tsx`**:
+   - Acceso seguro mediante teclado numérico táctil de PIN con perfiles de Cajero (`1234`) y Administrador (`9999`).
 
-4. **`src/components/KeypadModal.tsx`**:
-   - Teclado numérico táctil para ingresar pesos o cantidades.
+4. **`src/components/InvoiceModal.tsx`**:
+   - Modal de comprobante fiscal ARCA en formato ticket térmico con QR oficial de ARCA (`qrcode.react`), CAE, vencimiento, botón de WhatsApp y botón de imprimir.
 
-5. **`src/components/Cart.tsx`**:
-   - Resumen del pedido en curso, métodos de pago (`Efectivo`, `Tarjeta`, `Transferencia`), casilla de factura consumidor final y acción de cobrar.
+5. **`src/components/ProductGrid.tsx`**:
+   - Buscador rápido táctil, barra de categorías deslizable y grilla móvil de 2 columnas de cortes.
 
-6. **`src/components/FooterModals.tsx`**:
-   - `PricesModal` (F2): CRUD interactivo de categorías y productos (creación, edición de precio/nombre/unidad y borrado).
-   - `CashRegisterModal` (F4): Apertura de turno con fondo inicial, cálculo de arqueo (efectivo, tarjeta, transferencia), historial de ventas con desglose y confirmación en pantalla para cierre de turno.
-   - `HelpModal` (F1) y `ScaleModal` (F3).
+6. **`src/components/KeypadModal.tsx`**:
+   - Bottom sheet para smartphone con teclado numérico gigante y botones rápidos de presets (+0.5 kg, +1 kg, etc.).
 
-7. **`vercel.json`**:
-   - Configurado con `outputDirectory: "dist"` y reescritura SPA a `/index.html`.
+7. **`src/components/Cart.tsx`**:
+   - Detalle del pedido, selector de métodos de pago (`Efectivo`, `Tarjeta`, `Transferencia`), switch de Facturación ARCA (Factura B/C, Consumidor Final, DNI o CUIT) y cobro.
 
----
+8. **`src/components/FooterModals.tsx`**:
+   - `CashRegisterView`: Apertura de turno con fondo inicial, cálculo de arqueo (efectivo, tarjeta, transferencia), historial de ventas con botón para ver/reimprimir factura ARCA y cierre de turno.
+   - `PricesView`: Edición rápida de precios por kilo/unidad y creación de cortes/categorías directamente desde el celular.
 
-## 📋 Tareas Pendientes Prioritarias (Roadmap)
-
-Cuando el usuario pida avanzar, priorizar las siguientes funcionalidades:
-1. **Persistencia Cloud:** Implementar base de datos en tiempo real (Firebase Firestore / Cloud SQL / Supabase) para que las ventas, productos y turnos persistan en la nube y sincronicen múltiples terminales.
-2. **Cuentas Corrientes ("Fiado"):** Módulo de clientes de confianza, asignación de deuda al cobrar y registro de pagos a cuenta.
-3. **Venta Rápida / Libre:** Botón de monto libre para productos no inventariados (leña, carbón, combos).
-4. **Mermas y Desposte:** Cálculo de rendimiento por media res.
-5. **Integración con Impresoras Térmicas y Balanzas:** Generación de tickets ESC/POS y lectura serial de peso.
+9. **`src/App.tsx`**:
+   - Gestión de autenticación, barra superior con estado de caja en vivo, barra de navegación inferior móvil (`bottom-nav`), barra flotante de cobro rápido y persistencia en `localStorage`.
 
 ---
 

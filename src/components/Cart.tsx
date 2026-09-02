@@ -1,124 +1,257 @@
 import React, { useState } from 'react';
-import { Trash2, FileText, Banknote, CreditCard, Smartphone } from 'lucide-react';
-import { CartItem } from '../types';
+import { Trash2, FileText, Banknote, CreditCard, Smartphone, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react';
+import { CartItem, InvoiceType, DocType } from '../types';
 
 interface CartProps {
   items: CartItem[];
   isShiftOpen: boolean;
   onRemoveItem: (id: string) => void;
-  onCheckout: (paymentMethod: string, invoice: boolean) => void;
+  onCheckout: (
+    paymentMethod: string, 
+    invoice: boolean, 
+    invoiceType?: InvoiceType, 
+    docTipo?: DocType, 
+    docNro?: string
+  ) => void;
   onClear: () => void;
 }
 
 export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: CartProps) {
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
-  const [wantsInvoice, setWantsInvoice] = useState(false);
+  const [wantsInvoice, setWantsInvoice] = useState(true); // Facturación como foco principal
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>('FACTURA_B');
+  const [docTipo, setDocTipo] = useState<DocType>('99');
+  const [docNro, setDocNro] = useState('');
+
   const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
+  const handleCobrar = () => {
+    onCheckout(
+      paymentMethod, 
+      wantsInvoice, 
+      invoiceType, 
+      docTipo, 
+      docTipo === '99' ? '0' : docNro
+    );
+  };
+
   return (
-    <div className="h-full flex flex-col bg-white rounded-3xl border-2 border-[#D7CCC8] shadow-lg overflow-hidden">
-      <div className="p-6 border-b border-[#EFEBE9]">
-        <h2 className="text-xl font-bold uppercase text-[#5D4037] mb-1">Detalle de Venta</h2>
-        <p className="text-sm text-gray-500">Cliente: Consumidor Final</p>
+    <div className="h-full flex flex-col bg-white rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden pb-16 sm:pb-0">
+      {/* Header */}
+      <div className="p-4 bg-[#FDFBF7] border-b border-[#EFEBE9] flex justify-between items-center shrink-0">
+        <div>
+          <h2 className="text-base sm:text-lg font-black uppercase text-[#5D4037] leading-none">
+            Detalle del Pedido
+          </h2>
+          <span className="text-xs text-gray-500 font-medium">
+            {items.length} {items.length === 1 ? 'ítem agregado' : 'ítems agregados'}
+          </span>
+        </div>
+        {items.length > 0 && (
+          <button
+            onClick={onClear}
+            className="text-xs font-bold text-[#A52A2A] hover:bg-red-50 px-2.5 py-1 rounded-lg border border-red-200 transition-colors"
+          >
+            Vaciar
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+      {/* Item List */}
+      <div className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto">
         {items.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400">
-            <p className="text-lg">No hay productos</p>
-            <p className="text-sm">Seleccione un producto a la izquierda</p>
+          <div className="h-48 sm:h-full flex flex-col items-center justify-center text-center text-gray-400 p-6">
+            <p className="text-base font-bold text-[#5D4037]">El pedido está vacío</p>
+            <p className="text-xs text-gray-400 mt-1">Seleccione cortes en la pestaña de Venta</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center bg-[#FDFBF7] p-3 rounded-lg border border-[#EFEBE9]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-lg">{item.product.name} ({item.quantity} {item.product.unit})</p>
-                    <button 
-                      onClick={() => onRemoveItem(item.id)}
-                      className="text-[#A52A2A] hover:opacity-80 p-1"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-500">${item.product.price.toLocaleString('es-AR')} x {item.quantity}</p>
+              <div
+                key={item.id}
+                className="flex justify-between items-center bg-[#FDFBF7] p-3 rounded-2xl border border-[#EFEBE9] shadow-2xs"
+              >
+                <div className="flex-1 pr-2">
+                  <p className="font-extrabold text-sm sm:text-base text-[#3C2A21] leading-tight">
+                    {item.product.name}
+                  </p>
+                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                    {item.quantity} {item.product.unit} × ${item.product.price.toLocaleString('es-AR')}
+                  </p>
                 </div>
-                <p className="font-bold text-lg">
-                  ${(item.quantity * item.product.price).toLocaleString('es-AR')}
-                </p>
+                <div className="flex items-center gap-3">
+                  <span className="font-black text-sm sm:text-base text-[#A52A2A]">
+                    ${(item.quantity * item.product.price).toLocaleString('es-AR')}
+                  </span>
+                  <button
+                    onClick={() => onRemoveItem(item.id)}
+                    className="text-[#A52A2A] hover:bg-red-100 p-1.5 rounded-xl transition-colors active:scale-90"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="p-6 bg-[#EFEBE9]">
-        <div className="flex justify-between items-center mb-6">
-          <span className="text-xl font-medium">TOTAL A COBRAR:</span>
-          <span className="text-4xl font-black text-[#A52A2A]">
+      {/* Footer & Checkout Panel */}
+      <div className="p-4 bg-[#EFEBE9] border-t border-[#D7CCC8] shrink-0 space-y-3.5">
+        {/* Total Display */}
+        <div className="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border border-[#D7CCC8] shadow-xs">
+          <span className="text-sm font-black text-[#5D4037] uppercase">Total a Cobrar:</span>
+          <span className="text-2xl sm:text-3xl font-black text-[#A52A2A]">
             ${total.toLocaleString('es-AR')}
           </span>
         </div>
 
-        {/* Metodo de Pago y Factura */}
-        <div className="mb-4">
-          <p className="text-sm font-bold text-[#5D4037] mb-2 uppercase">Método de Pago</p>
-          <div className="grid grid-cols-2 gap-2 mb-3">
+        {/* Métodos de Pago */}
+        <div>
+          <span className="block text-[11px] font-bold text-[#5D4037] mb-1.5 uppercase tracking-wider">
+            Forma de Pago
+          </span>
+          <div className="grid grid-cols-3 gap-2">
             {[
               { id: 'Efectivo', icon: Banknote },
               { id: 'Tarjeta', icon: CreditCard },
               { id: 'Transferencia', icon: Smartphone }
-            ].map(method => {
+            ].map((method) => {
               const Icon = method.icon;
               return (
                 <button
                   key={method.id}
                   onClick={() => setPaymentMethod(method.id)}
-                  className={`flex items-center justify-center gap-2 py-2 rounded-xl border-2 font-bold transition-colors ${
-                    paymentMethod === method.id 
-                      ? 'bg-[#8B4513] text-white border-[#8B4513]' 
-                      : 'bg-white text-[#3C2A21] border-[#D7CCC8] hover:bg-[#EFEBE9]'
+                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-xl border-2 font-bold text-xs transition-all active:scale-95 ${
+                    paymentMethod === method.id
+                      ? 'bg-[#8B4513] text-white border-[#8B4513] shadow-xs'
+                      : 'bg-white text-[#3C2A21] border-[#D7CCC8] hover:bg-[#FDFBF7]'
                   }`}
                 >
-                  <Icon size={16} /> <span className="text-sm">{method.id}</span>
+                  <Icon size={16} />
+                  <span>{method.id}</span>
                 </button>
-              )
+              );
             })}
           </div>
-          <label className="flex items-center gap-3 p-3 bg-[#FDFBF7] border border-[#D7CCC8] rounded-xl cursor-pointer hover:bg-[#EFEBE9] transition-colors">
-            <input 
-              type="checkbox" 
-              checked={wantsInvoice} 
-              onChange={(e) => setWantsInvoice(e.target.checked)}
-              className="w-5 h-5 accent-[#8B4513] rounded cursor-pointer shrink-0"
-            />
-            <div className="flex items-center gap-2">
-              <FileText size={18} className="text-[#8B4513]" />
-              <span className="font-bold text-[#3C2A21] text-sm">Generar Factura (Cons. Final)</span>
-            </div>
-          </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={onClear}
-            className="py-5 bg-white border-2 border-[#A52A2A] text-[#A52A2A] rounded-2xl font-bold text-xl shadow-sm uppercase hover:bg-gray-50"
-          >
-            Limpiar
-          </button>
-          <button
-            onClick={() => onCheckout(paymentMethod, wantsInvoice)}
-            disabled={items.length === 0 || !isShiftOpen}
-            className={`py-5 text-white rounded-2xl font-bold text-xl shadow-sm uppercase border-b-4 transition-all ${
-              !isShiftOpen 
-                ? 'bg-gray-400 border-gray-500 cursor-not-allowed'
-                : 'bg-[#4F7942] disabled:bg-[#A3B89E] disabled:border-[#8FA38B] disabled:text-white/70 border-[#2D4226] hover:brightness-110'
-            }`}
-          >
-            {!isShiftOpen ? 'CAJA CERRADA' : 'Cobrar'}
-          </button>
+        {/* Facturación Electrónica ARCA */}
+        <div className="bg-white p-3 rounded-2xl border border-[#D7CCC8] space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck size={18} className="text-[#4F7942]" />
+              <span className="text-xs font-black text-[#3C2A21] uppercase">Factura ARCA (ex-AFIP)</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={wantsInvoice} 
+                onChange={(e) => setWantsInvoice(e.target.checked)} 
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4F7942]"></div>
+            </label>
+          </div>
+
+          {wantsInvoice && (
+            <div className="space-y-2 pt-1 border-t border-[#EFEBE9]">
+              {/* Tipo de Factura */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInvoiceType('FACTURA_B')}
+                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-colors ${
+                    invoiceType === 'FACTURA_B'
+                      ? 'bg-[#8B4513] text-white'
+                      : 'bg-[#EFEBE9] text-[#5D4037]'
+                  }`}
+                >
+                  Factura B (IVA Incl.)
+                </button>
+                <button
+                  onClick={() => setInvoiceType('FACTURA_C')}
+                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-colors ${
+                    invoiceType === 'FACTURA_C'
+                      ? 'bg-[#8B4513] text-white'
+                      : 'bg-[#EFEBE9] text-[#5D4037]'
+                  }`}
+                >
+                  Factura C
+                </button>
+              </div>
+
+              {/* Receptor */}
+              <div className="flex gap-1.5 text-xs font-semibold">
+                <button
+                  onClick={() => { setDocTipo('99'); setDocNro(''); }}
+                  className={`flex-1 py-1 px-1 rounded-lg border text-center truncate ${
+                    docTipo === '99'
+                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
+                      : 'bg-white border-gray-300 text-gray-600'
+                  }`}
+                >
+                  Cons. Final
+                </button>
+                <button
+                  onClick={() => setDocTipo('96')}
+                  className={`flex-1 py-1 px-1 rounded-lg border text-center ${
+                    docTipo === '96'
+                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
+                      : 'bg-white border-gray-300 text-gray-600'
+                  }`}
+                >
+                  DNI
+                </button>
+                <button
+                  onClick={() => setDocTipo('80')}
+                  className={`flex-1 py-1 px-1 rounded-lg border text-center ${
+                    docTipo === '80'
+                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-bold'
+                      : 'bg-white border-gray-300 text-gray-600'
+                  }`}
+                >
+                  CUIT
+                </button>
+              </div>
+
+              {/* Input para DNI o CUIT */}
+              {docTipo !== '99' && (
+                <input
+                  type="number"
+                  placeholder={docTipo === '80' ? 'Ingrese CUIT (11 dígitos)' : 'Ingrese DNI del cliente'}
+                  value={docNro}
+                  onChange={(e) => setDocNro(e.target.value)}
+                  className="w-full p-2 bg-[#FDFBF7] border border-[#D7CCC8] rounded-xl text-xs font-bold outline-none focus:border-[#8B4513]"
+                />
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Warning if Shift is closed */}
+        {!isShiftOpen && (
+          <div className="p-2.5 bg-red-100 border border-red-300 rounded-xl flex items-center gap-2 text-red-800 text-xs font-bold">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>Debe abrir la caja desde la pestaña Caja para poder cobrar.</span>
+          </div>
+        )}
+
+        {/* Action Button */}
+        <button
+          onClick={handleCobrar}
+          disabled={items.length === 0 || !isShiftOpen}
+          className={`w-full py-4 text-white rounded-2xl font-black text-lg shadow-md uppercase border-b-4 transition-all active:scale-98 ${
+            !isShiftOpen
+              ? 'bg-gray-400 border-gray-500 cursor-not-allowed opacity-75'
+              : 'bg-[#4F7942] disabled:bg-[#A3B89E] disabled:border-[#8FA38B] disabled:text-white/70 border-[#2D4226] hover:brightness-110 shadow-lg'
+          }`}
+        >
+          {!isShiftOpen 
+            ? 'CAJA CERRADA' 
+            : wantsInvoice 
+            ? 'COBRAR Y FACTURAR' 
+            : 'COBRAR TICKET'}
+        </button>
       </div>
     </div>
   );
