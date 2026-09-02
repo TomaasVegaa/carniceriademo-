@@ -102,10 +102,20 @@ export const saveShiftToDB = async (shift: ShiftState) => {
 
 export const saveSaleToDB = async (sale: Sale) => {
   const docRef = doc(db, 'sales', sale.id);
-  await setDoc(docRef, {
+  
+  const dataToSave: any = {
     ...sale,
-    timestamp: sale.timestamp // Firestore automatically converts JS Date objects
+    timestamp: sale.timestamp
+  };
+
+  // Firestore no soporta valores 'undefined'. Los eliminamos antes de guardar.
+  Object.keys(dataToSave).forEach(key => {
+    if (dataToSave[key] === undefined) {
+      delete dataToSave[key];
+    }
   });
+
+  await setDoc(docRef, dataToSave);
 };
 
 // ==========================================
