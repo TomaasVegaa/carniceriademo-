@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Info, Tag, Plus, Edit2, Trash2, Save, Store, Calculator, Clock, ReceiptText, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Product, Sale, ShiftState } from '../types';
-import { saveProductToDB, deleteProductFromDB, saveCategoriesToDB, saveShiftToDB } from '../services/dbService';
+import { saveProductToDB, deleteProductFromDB, saveCategoriesToDB, saveShiftToDB, saveShiftClosureToDB } from '../services/dbService';
 
 interface PricesViewProps {
   categories: string[];
@@ -248,7 +248,14 @@ export function CashRegisterView({ shift, sales, onSelectSaleForInvoice, onBack 
   const [initialBalanceInput, setInitialBalanceInput] = useState('');
   const [showConfirmClose, setShowConfirmClose] = useState(false);
 
-  const currentShiftSales = sales.filter((s) => s.shift === shift.shift);
+  const currentShiftSales = sales.filter((s) => {
+    if (s.shift !== shift.shift) return false;
+    if (shift.openedAt) {
+      // Filtrar solo las ventas que ocurrieron DESPUÉS de abrir la caja actual
+      return s.timestamp.getTime() >= shift.openedAt.getTime();
+    }
+    return true;
+  });
 
   const totalEfectivo = currentShiftSales
     .filter((s) => s.paymentMethod === 'Efectivo')
@@ -274,6 +281,19 @@ export function CashRegisterView({ shift, sales, onSelectSaleForInvoice, onBack 
   };
 
   const confirmCloseShift = () => {
+    // Guardar el historial del turno cerrado
+    saveShiftClosureToDB({
+      shift: shift.shift,
+      openedAt: shift.openedAt,
+      closedAt: new Date(),
+      initialBalance: shift.initialBalance,
+      totalEfectivo,
+      totalTarjeta,
+      totalTransferencia,
+      totalVentas,
+      salesCount: currentShiftSales.length
+    });
+
     saveShiftToDB({ isOpen: false, shift: null, initialBalance: 0, openedAt: null });
     setShowConfirmClose(false);
   };

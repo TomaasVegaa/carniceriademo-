@@ -118,6 +118,12 @@ export const saveSaleToDB = async (sale: Sale) => {
   await setDoc(docRef, dataToSave);
 };
 
+export const saveShiftClosureToDB = async (closure: any) => {
+  // Creamos un documento nuevo automáticamente en la colección 'closures'
+  const docRef = doc(collection(db, 'closures'));
+  await setDoc(docRef, closure);
+};
+
 // ==========================================
 // MIGRACIÓN INICIAL (PARA LA DEMO)
 // ==========================================
