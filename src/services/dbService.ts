@@ -147,3 +147,19 @@ export const initializeDemoData = async (
     console.error('Error inicializando datos demo:', error);
   }
 };
+
+export const forceResetData = async (products: Product[], categories: string[]) => {
+  try {
+    const prods = await getDocs(collection(db, 'products'));
+    const deletePromises = prods.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(deletePromises);
+    
+    await saveCategoriesToDB(categories);
+    for (const prod of products) {
+      await saveProductToDB(prod);
+    }
+    console.log('Catálogo reseteado con éxito.');
+  } catch (error) {
+    console.error('Error reseteando catálogo:', error);
+  }
+};
