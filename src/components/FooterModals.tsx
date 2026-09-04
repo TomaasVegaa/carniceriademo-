@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { X, Info, Tag, Plus, Edit2, Trash2, Save, Store, Calculator, Clock, ReceiptText, ArrowLeft, CheckCircle2, RefreshCw } from 'lucide-react';
+import { X, Info, Tag, Plus, Edit2, Trash2, Save, Store, Calculator, Clock, ReceiptText, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Product, Sale, ShiftState } from '../types';
-import { saveProductToDB, deleteProductFromDB, saveCategoriesToDB, saveShiftToDB, saveShiftClosureToDB, forceResetData } from '../services/dbService';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from '../data';
+import { saveProductToDB, deleteProductFromDB, saveCategoriesToDB, saveShiftToDB, saveShiftClosureToDB } from '../services/dbService';
 
 interface PricesViewProps {
   categories: string[];
@@ -16,18 +15,7 @@ export function PricesView({ categories, products, onBack }: PricesViewProps) {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
 
-  const [isResetting, setIsResetting] = useState(false);
-
   const filteredProducts = products.filter(p => p.category === activeCategory);
-
-  const handleForceReset = async () => {
-    if (window.confirm("¿Estás seguro que deseas sobreescribir todo el catálogo con los valores de fábrica? Esta acción no se puede deshacer.")) {
-      setIsResetting(true);
-      await forceResetData(INITIAL_PRODUCTS, INITIAL_CATEGORIES);
-      setIsResetting(false);
-      setActiveCategory(INITIAL_CATEGORIES[0]);
-    }
-  };
 
   const handleAddCategory = () => {
     if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
@@ -143,18 +131,6 @@ export function PricesView({ categories, products, onBack }: PricesViewProps) {
             className="px-3 py-1.5 bg-[#8B4513] text-white rounded-xl text-xs font-bold disabled:opacity-50"
           >
             Agregar
-          </button>
-        </div>
-        
-        {/* Reset Catalog Button */}
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={handleForceReset}
-            disabled={isResetting}
-            className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl text-[10px] font-black uppercase flex items-center gap-1 transition-colors border border-red-300 shadow-xs"
-          >
-            <RefreshCw size={12} className={isResetting ? "animate-spin" : ""} /> 
-            {isResetting ? 'Restaurando...' : 'Restaurar Catálogo por Defecto'}
           </button>
         </div>
       </div>
