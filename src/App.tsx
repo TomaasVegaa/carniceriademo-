@@ -110,10 +110,10 @@ export default function App() {
   };
 
   // Cobro y Facturación ARCA
-  const handleCheckout = (
+  const handleCheckout = async (
     paymentMethod: string, 
     invoice: boolean,
-    invoiceType: InvoiceType = 'FACTURA_B',
+    invoiceType: InvoiceType = 'FACTURA_C',
     docTipo: DocType = '99',
     docNro: string = '0'
   ) => {
@@ -126,7 +126,12 @@ export default function App() {
 
     let fiscalData = undefined;
     if (invoice) {
-      fiscalData = generateArcaInvoice(cart, total, invoiceType, docTipo, docNro);
+      try {
+        fiscalData = await generateArcaInvoice(cart, total, invoiceType, docTipo, docNro);
+      } catch (error: any) {
+        alert(error.message || 'Error al generar la factura electrónica en ARCA.');
+        return; // Detenemos el cobro si falla la factura
+      }
     }
 
     const newSale: Sale = {

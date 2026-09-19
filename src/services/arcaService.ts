@@ -12,94 +12,102 @@ export interface BusinessConfig {
 }
 
 export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
-  razonSocial: 'CARNICERÍA Y FIAMBRERÍA LA TRADICIÓN',
-  nombreFantasia: 'La Tradición Carnes Seleccionadas',
-  cuit: '30-71829304-8',
-  iibb: '30-71829304-8',
-  inicioActividades: '15/03/2021',
-  condicionIva: 'Responsable Inscripto',
-  domicilio: 'Av. San Martín 1420 - Local 2',
-  ptoVta: 1
+  razonSocial: 'ROSAS RODRIGO ALEJANDRO',
+  nombreFantasia: 'Carniceria Web Service',
+  cuit: '20-40437549-1',
+  iibb: '20-40437549-1',
+  inicioActividades: '18/09/2026',
+  condicionIva: 'Monotributo',
+  domicilio: 'San Lorenzo 1997, San Miguel de Tucumán',
+  ptoVta: 2
 };
 
-// Obtiene el último número de comprobante emitido desde localStorage
-export function getNextInvoiceNumber(invoiceType: InvoiceType): number {
-  const key = `pos_last_cbte_${invoiceType}`;
-  const saved = localStorage.getItem(key);
-  const current = saved ? parseInt(saved, 10) : 1045; // Comienza en un número realista
-  const next = current + 1;
-  localStorage.setItem(key, next.toString());
-  return next;
-}
+
 
 /**
  * Genera el comprobante fiscal estructurado conforme a las normativas de ARCA (ex-AFIP).
  * Listo para integrar con Web Service WSAA + WSFE de ARCA en backend.
  */
-export function generateArcaInvoice(
+export async function generateArcaInvoice(
   items: CartItem[],
   total: number,
-  invoiceType: InvoiceType = 'FACTURA_B',
+  invoiceType: InvoiceType = 'FACTURA_C',
   docTipo: DocType = '99',
   docNro: string = '0',
   customConfig?: Partial<BusinessConfig>
-): FiscalData {
+): Promise<FiscalData> {
   const config = { ...DEFAULT_BUSINESS_CONFIG, ...customConfig };
-  const cbteNro = getNextInvoiceNumber(invoiceType);
   
   // Código de comprobante oficial ARCA / AFIP
   // 6 = Factura B, 11 = Factura C
   const tipoCmpCode = invoiceType === 'FACTURA_C' ? 11 : 6;
   
-  // Generar CAE simulado de 14 dígitos (en producción se recibe del WSFE de ARCA)
-  const randomCaeSuffix = Math.floor(10000000 + Math.random() * 90000000).toString();
-  const cae = `7438${randomCaeSuffix}`;
-  
-  // Vencimiento CAE: 10 días posteriores a la emisión
-  const vtoDate = new Date();
-  vtoDate.setDate(vtoDate.getDate() + 10);
-  const caeVto = vtoDate.toISOString().split('T')[0];
-  
   const cuitClean = config.cuit.replace(/\D/g, '');
   const docNroClean = docNro.replace(/\D/g, '') || '0';
 
-  // Payload oficial de ARCA para Código QR (RG 4291 / 5048)
-  const qrObject = {
-    ver: 1,
-    fecha: new Date().toISOString().split('T')[0],
-    cuit: parseInt(cuitClean, 10) || 30718293048,
-    ptoVta: config.ptoVta,
-    tipoCmp: tipoCmpCode,
-    nroCmp: cbteNro,
-    importe: Number(total.toFixed(2)),
-    moneda: 'PES',
-    ctz: 1,
-    tipoDocRec: parseInt(docTipo, 10),
-    nroDocRec: parseInt(docNroClean, 10),
-    tipoCodAut: 'E',
-    codAut: parseInt(cae, 10)
-  };
+  try {
+    const response = await fetch('/api/facturar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        total: Number(total.toFixed(2)),
+        docTipo: parseInt(docTipo, 10),
+        docNro: parseInt(docNroClean, 10) || 0
+      })
+    });
 
-  const jsonStr = JSON.stringify(qrObject);
-  const base64Payload = btoa(unescape(encodeURIComponent(jsonStr)));
-  const qrDataUrl = `https://www.afip.gob.ar/fe/qr/?p=${base64Payload}`;
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Error al conectar con ARCA');
+    }
 
-  return {
-    invoiceType,
-    ptoVta: config.ptoVta,
-    cbteNro,
-    docTipo,
-    docNro: docNroClean,
-    cae,
-    caeVto,
-    qrDataUrl,
-    razonSocialEmisor: config.razonSocial,
-    cuitEmisor: config.cuit,
-    inicioActividades: config.inicioActividades,
-    iibb: config.iibb,
-    condicionIva: config.condicionIva,
-    domicilioComercial: config.domicilio
-  };
+    const { cae, caeVto, voucherNumber, date } = await response.json();
+    
+    // Payload oficial de ARCA para Código QR (RG 4291 / 5048)
+    const qrObject = {
+      ver: 1,
+      fecha: `${date.substring(0,4)}-${date.substring(4,6)}-${date.substring(6,8)}`,
+      cuit: parseInt(cuitClean, 10),
+      ptoVta: config.ptoVta,
+      tipoCmp: tipoCmpCode,
+      nroCmp: voucherNumber,
+      importe: Number(total.toFixed(2)),
+      moneda: 'PES',
+      ctz: 1,
+      tipoDocRec: parseInt(docTipo, 10),
+      nroDocRec: parseInt(docNroClean, 10) || 0,
+      tipoCodAut: 'E',
+      codAut: parseInt(cae, 10)
+    };
+
+    const jsonStr = JSON.stringify(qrObject);
+    const base64Payload = btoa(unescape(encodeURIComponent(jsonStr)));
+    const qrDataUrl = `https://www.afip.gob.ar/fe/qr/?p=${base64Payload}`;
+
+    // Format caeVto to yyyy-mm-dd for visual display
+    const caeVtoFormatted = caeVto ? `${caeVto.substring(0,4)}-${caeVto.substring(4,6)}-${caeVto.substring(6,8)}` : '';
+
+    return {
+      invoiceType,
+      ptoVta: config.ptoVta,
+      cbteNro: voucherNumber,
+      docTipo,
+      docNro: docNroClean,
+      cae,
+      caeVto: caeVtoFormatted,
+      qrDataUrl,
+      razonSocialEmisor: config.razonSocial,
+      cuitEmisor: config.cuit,
+      inicioActividades: config.inicioActividades,
+      iibb: config.iibb,
+      condicionIva: config.condicionIva,
+      domicilioComercial: config.domicilio
+    };
+
+  } catch (error) {
+    console.error('Error generando factura real:', error);
+    throw error;
+  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Banknote, CreditCard, Smartphone, ShieldCheck, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Smartphone, ShieldCheck, AlertCircle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { CartItem, InvoiceType, DocType } from '../types';
 
 interface CartProps {
@@ -24,17 +24,20 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [docTipo, setDocTipo] = useState<DocType>('99');
   const [docNro, setDocNro] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-  const handleCobrar = () => {
-    onCheckout(
+  const handleCobrar = async () => {
+    setIsProcessing(true);
+    await onCheckout(
       paymentMethod, 
       wantsInvoice, 
       'FACTURA_C', // Monotributista SIEMPRE Factura C
       docTipo, 
       docTipo === '99' ? '0' : docNro
     );
+    setIsProcessing(false);
   };
 
   return (
@@ -237,15 +240,18 @@ export function Cart({ items, isShiftOpen, onRemoveItem, onCheckout, onClear }: 
         {/* Action Button */}
         <button
           onClick={handleCobrar}
-          disabled={items.length === 0 || !isShiftOpen || (wantsInvoice && docTipo !== '99' && !docNro)}
-          className={`w-full py-4 text-white rounded-2xl font-black text-lg shadow-md uppercase border-b-4 transition-all active:scale-98 ${
-            !isShiftOpen
+          disabled={items.length === 0 || !isShiftOpen || (wantsInvoice && docTipo !== '99' && !docNro) || isProcessing}
+          className={`w-full py-4 text-white rounded-2xl font-black text-lg shadow-md uppercase border-b-4 transition-all active:scale-98 flex items-center justify-center gap-2 ${
+            !isShiftOpen || isProcessing
               ? 'bg-gray-400 border-gray-500 cursor-not-allowed opacity-75'
               : 'bg-[#4F7942] disabled:bg-[#A3B89E] disabled:border-[#8FA38B] disabled:text-white/70 border-[#2D4226] hover:brightness-110 shadow-lg'
           }`}
         >
+          {isProcessing && <Loader2 size={24} className="animate-spin" />}
           {!isShiftOpen 
             ? 'CAJA CERRADA' 
+            : isProcessing
+            ? 'CONECTANDO...'
             : wantsInvoice 
             ? 'COBRAR Y FACTURAR' 
             : 'COBRAR TICKET'}
