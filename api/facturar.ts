@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { Arca } from '@arcasdk/core';
+import { Arca, MemoryTicketStorage } from '@arcasdk/core';
 import path from 'path';
 import fs from 'fs';
 
@@ -14,12 +14,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const certPath = path.join(process.cwd(), 'api', 'certs', 'CARNICERIA_7e08029a895e08ec.crt');
     const keyPath = path.join(process.cwd(), 'api', 'certs', 'carniceria.key');
 
-    // Inicializar SDK de ARCA
+    // Inicializar SDK de ARCA con almacenamiento en memoria para evitar errores de Read-Only en Vercel
     const arca = new Arca({
       cuit: 20404375491,
       production: true, 
       cert: fs.readFileSync(certPath, 'utf8'),
-      key: fs.readFileSync(keyPath, 'utf8')
+      key: fs.readFileSync(keyPath, 'utf8'),
+      ticketStorage: new MemoryTicketStorage({ cuit: 20404375491, production: true })
     });
 
     const puntoDeVenta = 2;
