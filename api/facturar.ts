@@ -20,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       production: true, 
       cert: fs.readFileSync(certPath, 'utf8'),
       key: fs.readFileSync(keyPath, 'utf8'),
-      ticketStorage: new MemoryTicketStorage({ cuit: 20404375491, production: true })
+      ticketStorage: new MemoryTicketStorage({ cuit: 20404375491, production: true }),
+      useHttpsAgent: true
     });
 
     const puntoDeVenta = 2;
