@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Delete, Plus } from 'lucide-react';
+import { X, Delete, Plus, AlertTriangle } from 'lucide-react';
 
 interface KeypadModalProps {
   title: string;
@@ -10,8 +10,10 @@ interface KeypadModalProps {
 
 export function KeypadModal({ title, unit, onConfirm, onCancel }: KeypadModalProps) {
   const [value, setValue] = useState('');
+  const [confirmHighKg, setConfirmHighKg] = useState<number | null>(null);
 
   const handlePress = (key: string) => {
+    if (confirmHighKg !== null) setConfirmHighKg(null);
     if (key === 'C') {
       setValue('');
     } else if (key === 'DEL') {
@@ -30,12 +32,18 @@ export function KeypadModal({ title, unit, onConfirm, onCancel }: KeypadModalPro
   };
 
   const handlePreset = (presetVal: number) => {
+    if (confirmHighKg !== null) setConfirmHighKg(null);
     setValue(presetVal.toString());
   };
 
   const handleConfirm = () => {
     const num = parseFloat(value);
     if (!isNaN(num) && num > 0) {
+      // Si la unidad es kg y el número es mayor o igual a 25 kg (por ejemplo si escribieron 800 pensando en gramos)
+      if (unit === 'kg' && num >= 25 && confirmHighKg !== num) {
+        setConfirmHighKg(num);
+        return;
+      }
       onConfirm(num);
     }
   };
@@ -123,15 +131,46 @@ export function KeypadModal({ title, unit, onConfirm, onCancel }: KeypadModalPro
         </div>
 
         {/* Confirmation Button */}
-        <div className="p-3 bg-[#EFEBE9] border-t border-[#D7CCC8] shrink-0">
-          <button
-            onClick={handleConfirm}
-            disabled={!value || parseFloat(value) <= 0}
-            className="w-full py-4 text-lg font-black text-white bg-[#4F7942] hover:brightness-110 disabled:bg-[#A3B89E] disabled:text-white/70 rounded-2xl transition-all shadow-md uppercase border-b-4 border-[#2D4226] disabled:border-[#8FA38B] active:scale-98"
-          >
-            AGREGAR AL PEDIDO
-          </button>
-        </div>
+        {confirmHighKg !== null ? (
+          <div className="p-3 bg-amber-50 border-t-2 border-amber-300 shrink-0 space-y-2 animate-in fade-in">
+            <div className="flex items-start gap-2 text-amber-900 text-xs font-bold">
+              <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                ¿Ingresó <strong>{confirmHighKg} KILOS</strong> o quiso poner <strong>{(confirmHighKg / 1000)} kg ({confirmHighKg} gramos)</strong>?
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onConfirm(confirmHighKg / 1000)}
+                className="py-3 px-2 bg-[#4F7942] hover:brightness-110 text-white rounded-xl text-xs font-black shadow-xs active:scale-95 text-center leading-tight"
+              >
+                Eran {confirmHighKg}g<br />({(confirmHighKg / 1000)} kg)
+              </button>
+              <button
+                onClick={() => onConfirm(confirmHighKg)}
+                className="py-3 px-2 bg-[#8B4513] hover:brightness-110 text-white rounded-xl text-xs font-black shadow-xs active:scale-95 text-center leading-tight"
+              >
+                Confirmar<br />{confirmHighKg} kg
+              </button>
+            </div>
+            <button
+              onClick={() => setConfirmHighKg(null)}
+              className="w-full text-center text-xs font-bold text-gray-500 py-0.5 hover:underline"
+            >
+              Cancelar y corregir
+            </button>
+          </div>
+        ) : (
+          <div className="p-3 bg-[#EFEBE9] border-t border-[#D7CCC8] shrink-0">
+            <button
+              onClick={handleConfirm}
+              disabled={!value || parseFloat(value) <= 0}
+              className="w-full py-4 text-lg font-black text-white bg-[#4F7942] hover:brightness-110 disabled:bg-[#A3B89E] disabled:text-white/70 rounded-2xl transition-all shadow-md uppercase border-b-4 border-[#2D4226] disabled:border-[#8FA38B] active:scale-98"
+            >
+              AGREGAR AL PEDIDO
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

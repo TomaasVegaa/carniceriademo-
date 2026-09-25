@@ -241,6 +241,7 @@ export default function App() {
         {activeTab === 'stats' && (
           <StatsView
             sales={sales}
+            onSelectSaleForInvoice={(sale) => setActiveInvoiceSale(sale)}
           />
         )}
 
