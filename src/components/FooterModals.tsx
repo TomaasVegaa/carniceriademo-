@@ -500,3 +500,132 @@ export function CashRegisterView({ shift, sales, onSelectSaleForInvoice, onBack 
     </div>
   );
 }
+
+// ==========================================
+// VISTA DE ESTADÍSTICAS Y REPORTES
+// ==========================================
+
+interface StatsViewProps {
+  sales: Sale[];
+  onBack?: () => void;
+}
+
+export function StatsView({ sales, onBack }: StatsViewProps) {
+  // Helper functions para fechas
+  const now = new Date();
+  
+  // Principio de la semana (Lunes)
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+  startOfWeek.setDate(diff);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  // Principio del mes
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Filtros
+  const salesThisWeek = sales.filter(s => s.timestamp >= startOfWeek);
+  const salesThisMonth = sales.filter(s => s.timestamp >= startOfMonth);
+
+  // Cálculos
+  const calcStats = (filteredSales: Sale[]) => {
+    const total = filteredSales.reduce((acc, s) => acc + s.total, 0);
+    const facturado = filteredSales.filter(s => s.invoice).reduce((acc, s) => acc + s.total, 0);
+    const noFacturado = total - facturado;
+    return { total, facturado, noFacturado };
+  };
+
+  const weekStats = calcStats(salesThisWeek);
+  const monthStats = calcStats(salesThisMonth);
+
+  return (
+    <div className="h-full flex flex-col bg-[#FDFBF7] rounded-3xl border-2 border-[#D7CCC8] shadow-md overflow-hidden">
+      {/* Header */}
+      <div className="bg-[#8B4513] text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button onClick={onBack} className="p-1 hover:bg-white/20 rounded-full sm:hidden">
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h2 className="text-base sm:text-lg font-black tracking-tight">Reporte de Facturación</h2>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        
+        {/* SEMANA ACTUAL */}
+        <div className="bg-white p-4 rounded-2xl border-2 border-[#D7CCC8] shadow-xs">
+          <h3 className="text-[11px] font-bold text-[#5D4037] uppercase tracking-wider mb-3 pb-2 border-b border-[#EFEBE9]">
+            Esta Semana (Desde Lunes)
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-gray-600">Total en Ventas:</span>
+              <span className="text-xl font-black text-[#3C2A21]">${weekStats.total.toLocaleString('es-AR')}</span>
+            </div>
+            
+            <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-xl border border-emerald-100">
+              <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                <CheckCircle2 size={14} /> Facturado (ARCA):
+              </span>
+              <span className="text-sm font-black text-emerald-700">${weekStats.facturado.toLocaleString('es-AR')}</span>
+            </div>
+
+            <div className="flex justify-between items-center p-2 bg-amber-50 rounded-xl border border-amber-100">
+              <span className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                <Info size={14} /> No Facturado:
+              </span>
+              <span className="text-sm font-black text-amber-700">${weekStats.noFacturado.toLocaleString('es-AR')}</span>
+            </div>
+          </div>
+          
+          {/* Barra de progreso visual */}
+          <div className="mt-3 w-full bg-amber-200 rounded-full h-2.5 flex overflow-hidden">
+            <div 
+              className="bg-emerald-500 h-full" 
+              style={{ width: `${weekStats.total > 0 ? (weekStats.facturado / weekStats.total) * 100 : 0}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* MES ACTUAL */}
+        <div className="bg-white p-4 rounded-2xl border-2 border-[#D7CCC8] shadow-xs">
+          <h3 className="text-[11px] font-bold text-[#5D4037] uppercase tracking-wider mb-3 pb-2 border-b border-[#EFEBE9]">
+            Este Mes
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-gray-600">Total en Ventas:</span>
+              <span className="text-xl font-black text-[#3C2A21]">${monthStats.total.toLocaleString('es-AR')}</span>
+            </div>
+            
+            <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-xl border border-emerald-100">
+              <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                <CheckCircle2 size={14} /> Facturado (ARCA):
+              </span>
+              <span className="text-sm font-black text-emerald-700">${monthStats.facturado.toLocaleString('es-AR')}</span>
+            </div>
+
+            <div className="flex justify-between items-center p-2 bg-amber-50 rounded-xl border border-amber-100">
+              <span className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                <Info size={14} /> No Facturado:
+              </span>
+              <span className="text-sm font-black text-amber-700">${monthStats.noFacturado.toLocaleString('es-AR')}</span>
+            </div>
+          </div>
+          
+          {/* Barra de progreso visual */}
+          <div className="mt-3 w-full bg-amber-200 rounded-full h-2.5 flex overflow-hidden">
+            <div 
+              className="bg-emerald-500 h-full" 
+              style={{ width: `${monthStats.total > 0 ? (monthStats.facturado / monthStats.total) * 100 : 0}%` }}
+            ></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}

@@ -8,12 +8,13 @@ import {
   ReceiptText, 
   CheckCircle2, 
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3
 } from 'lucide-react';
 import { ProductGrid } from './components/ProductGrid';
 import { Cart } from './components/Cart';
 import { KeypadModal } from './components/KeypadModal';
-import { CashRegisterView, PricesView } from './components/FooterModals';
+import { CashRegisterView, PricesView, StatsView } from './components/FooterModals';
 import { LoginScreen } from './components/LoginScreen';
 import { InvoiceModal } from './components/InvoiceModal';
 import { Product, CartItem, Category, Sale, ShiftState, AuthUser, InvoiceType, DocType } from './types';
@@ -44,7 +45,7 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Estado de Navegación Móvil
-  const [activeTab, setActiveTab] = useState<'pos' | 'cart' | 'shift' | 'prices'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'cart' | 'shift' | 'prices' | 'stats'>('pos');
 
   // Estado de Caja y Ventas (Sincronizado con Firebase)
   const [shift, setShift] = useState<ShiftState>({ isOpen: false, shift: null, initialBalance: 0, openedAt: null });
@@ -237,6 +238,12 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'stats' && (
+          <StatsView
+            sales={sales}
+          />
+        )}
+
         {/* Floating Quick Checkout Bar (Visible en Venta si hay ítems en carrito) */}
         {activeTab === 'pos' && cart.length > 0 && (
           <div className="absolute bottom-16 inset-x-2 sm:inset-x-4 z-20">
@@ -263,7 +270,7 @@ export default function App() {
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="h-16 bg-white border-t-2 border-[#D7CCC8] grid grid-cols-4 px-2 z-30 shrink-0 shadow-lg select-none">
+      <nav className="h-16 bg-white border-t-2 border-[#D7CCC8] grid grid-cols-5 px-1 z-30 shrink-0 shadow-lg select-none">
         <button
           onClick={() => setActiveTab('pos')}
           className={`flex flex-col items-center justify-center gap-1 transition-colors ${
@@ -304,6 +311,16 @@ export default function App() {
             )}
           </div>
           <span className="text-[10px] tracking-tight">Caja</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('stats')}
+          className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+            activeTab === 'stats' ? 'text-[#8B4513] font-black' : 'text-gray-400 font-medium'
+          }`}
+        >
+          <BarChart3 size={22} className={activeTab === 'stats' ? 'scale-110 transition-transform' : ''} />
+          <span className="text-[10px] tracking-tight">Reportes</span>
         </button>
 
         <button
